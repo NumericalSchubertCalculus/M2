@@ -173,7 +173,7 @@ doc ///
 
 	 This algorithm is described in the paper:
  	 Leykin, Martin del Campo, Sottile, Vakil, Verschelde "Numerical Schubert Calculus via the Littlewood-Richardson homotopy algorithm". 
-         Math. Comp., 90 (2021), 1407-1433.  https://arxiv.org/abs/1802.00984.
+         Math. Comp., 90 (2021), 1407-1433.  @arXiv "1802.00984"@
 
       Text
         For instance, consider the Schubert problem {2,1}$^3$ in $Gr(3,6)$, which has two solutions
@@ -336,7 +336,7 @@ doc ///
       b:List
          of length $k$, a bracket representing a Schubert condition.
       n:ZZ
-         $k$ and $n$ represent the Grassmannian $Gr(k,n)$
+         $n$ along with $k$ represent the Grassmannian $Gr(k,n)$
    Outputs
       l:List
          the corresponding partition 
@@ -618,6 +618,10 @@ doc ///
       the function verifies if the matrix $s$ satisfies the incidence conditions imposed
       by $l$ with respect to the flag $F$, for each of the pairs in $P$, by computing
       the corresponding minor conditions.
+    Example
+      SchPblm = randomSchubertProblemInstance ({{1},{1},{1},{1}},2,4)
+      S = solveSchubertProblem(SchPblm,2,4)
+      all(S,s->checkIncidenceSolution(s,SchPblm))
    Caveat
       This function was created for testing purposes and will be deleted later
       as it may not be numerically stable.
