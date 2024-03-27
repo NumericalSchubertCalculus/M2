@@ -37,9 +37,6 @@ solutionsHash := new MutableHashTable;
 -- Last Update: October 16, 2015
 ------------------------------------
 
--- needsPackage "NumericalAlgebraicGeometry"
--- we need to use GAP's package
-
 --------------------------------
 -- Numerical Pieri Homotopies --
 --------------------------------
@@ -79,9 +76,6 @@ generateChildren(Sequence, List, List) := (kn, l, m) -> (
 ---------------------------
 positionVariableChildren = method(TypicalValue=>ZZ)
 positionVariableChildren(Sequence,List,List,List):=(kn,l,m,v)->(
-   -- kn is a sequence (k,n)
-   -- l, m are partitions
-   -- v is a children partition of m 
    (k,n) := kn;
    i := maxPosition(v-m);
    t := apply(i+1, j->plus(n-k-m_(j)-l_(k-j-1)));
@@ -176,14 +170,16 @@ solveInternalSimple(Sequence,List,List,List) := (kn,l,m,G)->(
       T = T/(t->sub(t,newR));
       ------------------------
       -- make sure your starting set of solutions are in fact solutions
-      -- of the Starting system S
+      -- of the starting system S
       ------------------------
-      assert all(start, s->norm sub(matrix{S},matrix{s}) < 1e-3);
+      if any(start, s->norm sub(matrix{S},matrix{s}) > 1e-3) then
+      error "starting solutions appear not to be solutions to the starting system";
       solutionsHash#{l,m,G} = track(S,T,start,NumericalAlgebraicGeometry$gamma=>exp(2*pi*ii*random RR)) / coordinates;
       ---------------------
-      ---- make sure that you got solutions of the Target System --
+      ---- make sure that you got solutions of the Target System 
       ---------------------
-      assert all(solutionsHash#{l,m,G}, s->norm sub(matrix{T},matrix{s}) < 1e-3);
+      if any(solutionsHash#{l,m,G}, s->norm sub(matrix{T},matrix{s}) > 1e-3) then
+      error "obtained solutions appear not to be solutions to the target system";
       solutionsHash#{l,m,G}
       )
 )
@@ -205,7 +201,7 @@ solveSimpleSchubert = method(TypicalValue=>List)
 solveSimpleSchubert(List,ZZ,ZZ) := (SchPblm,k,n)->(
    -- SchPblm is a an instance of a Schubert problem, which is a list of pairs (c,F) with c a Schubert conditions and F a flag
    -- Check that it does indeed form a Schubert problem, and convert the conditions to partitions (if they were brackets)
-   SchPblm = ensurePartitions(SchPblm,k,n);
+   SchPblm = ensureInstanceWithBrackets(SchPblm,k,n);
    -- set aside the first two conditions
    twoconds := take(SchPblm,2);
    remaining'conditions'flags := drop (SchPblm,2);
@@ -215,7 +211,6 @@ solveSimpleSchubert(List,ZZ,ZZ) := (SchPblm,k,n)->(
    F2:= promote(last last twoconds, FFF);
    simplConds := remaining'conditions'flags/first;
    remaining'flags := remaining'conditions'flags/last;   
-   --Slns:={};
    -- checks if it is a valid Simple Schubert problem
    checkSimpleSchubertProblem({l1,l2}|simplConds, k,n);
    checkPartitionsOverlap := (l1+reverse l2)/(i->n-k-i);
@@ -231,7 +226,6 @@ solveSimpleSchubert(List,ZZ,ZZ) := (SchPblm,k,n)->(
        -- we update the given flags F3 ... Fm
        -- to F3' .. Fm' where Fi' = A*Fi
        new'remaining'flags := A*remaining'flags;
-       --new'remaining'flags := apply(remaining'flags, F-> A*F);
        -- we take the first n-k columns and transpose
        -- because SimpleSchubert solves wtr rowSpan and not colSpan
        flagsForSimple:= apply(new'remaining'flags, F->transpose F_{0..n-k-1});
@@ -259,10 +253,12 @@ solveEasy(RingElement) := (p)->(
    var:=support p;
    b:=part(0,p);
    a:=p_(var_(0));
-   -- print(p,a,b);
    {{toCC sub((-b)/a, coefficientRing R)}}
 )
 
+-*********
+Below is some legacy code that is not exported.
+*********-
 
 --------------------------------------
 --- trackSimpleSchubert
@@ -288,11 +284,11 @@ trackSimpleSchubert(Sequence, Sequence, List, List) := o->(kn,cond,G,F) ->(
    (k,n) := kn;
    -- l and m are partitions of n
    (l,m) := cond;
-   Sols:= (if o.StartSolutions === null then solveInternalSimple(kn,l,m,G) else o.StartSolutions);
+   Sols := (if o.StartSolutions === null then solveInternalSimple(kn,l,m,G) else o.StartSolutions);
    E := skewSchubertVariety(kn,l,m);
-   Start:=apply(G, g->det( matrix E || sub(g, ring E),Strategy=>Cofactor));
-   Target:=apply(F,f->det( matrix E || sub(f, ring E),Strategy=>Cofactor));
-   Ret:=track(Start,Target,Sols,NumericalAlgebraicGeometry$gamma=>exp(2*pi*ii*random RR)) / coordinates;
+   Start := apply(G, g->det( matrix E || sub(g, ring E),Strategy=>Cofactor));
+   Target := apply(F,f->det( matrix E || sub(f, ring E),Strategy=>Cofactor));
+   Ret := track(Start,Target,Sols,NumericalAlgebraicGeometry$gamma=>exp(2*pi*ii*random RR)) / coordinates;
    if o.Memoize then solutionsHash#{l,m,F} = Ret;  
    return Ret;
 )

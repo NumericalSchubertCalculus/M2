@@ -20,21 +20,13 @@ solveRandomSchubertProblemViaMonodromy = method(Options=>{Verbose=>false})
 solveRandomSchubertProblemViaMonodromy (List, ZZ, ZZ) := o -> (conds, k, n) -> (
     (X,P,PS) := parametricSchubertProblem(conds,k,n);
     GS := gateSystem(P,X,PS);
-    -*
-    R := FFF[P/(p->p.Name)][X/(x->x.Name)];
-    PR := P/(p->R_(p.Name));
-    XR := X/(x->R_(x.Name));
-    PSR := value(PS,valueHashTable(P|X,PR|XR));
-    *-
     -- get seed solution
     (s0,XX,inverse'flags) := oneSolutionForOneInstance(conds,k,n);
     p0 := point{inverse'flags/entries//flatten//flatten};
     (V,npaths) := monodromySolve(
-	--polySystem PSR, 
 	GS,
 	p0, {s0}, 
 	NumberOfNodes=>4, NumberOfEdges=>1, 
-	--"new tracking routine"=>false, 
 	Verbose=>o.Verbose);
     (V, npaths, getTrackTime(V.Graph)) 
     )
@@ -79,7 +71,6 @@ oneSolutionForOneInstance (List,ZZ,ZZ) := (conds,k,n) -> (
 		else random(C^n,C^1)
 		);
 	    solve(F,id_(C^n))
-	    --F
 	));
     (p0,X0,remaining'inverse'flags)
     )

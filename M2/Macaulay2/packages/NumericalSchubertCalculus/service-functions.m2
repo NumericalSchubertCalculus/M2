@@ -10,6 +10,7 @@ export {
 ----------------
 --Functions contained here but not exported:
 ----------------
+-- ensureInstanceWithBrackets(List,ZZ,ZZ)
 -- verifyLength(List, ZZ)
 -- partition2bracket(List,ZZ,ZZ)
 -- output2partition(List) --input redcheckers
@@ -67,10 +68,10 @@ LRnumber (List,ZZ,ZZ) := o -> (conds,k,n) -> (
 )
 
 -----------------------------------------------------------------------------------------
--- ensurePartitions  
+-- ensureInstanceWithBrackets  
 --
--- checks that the input (Instance, k, n) is correct; it forms an instance of 
---  a Schubert problem on a Grassmannian, and then returns the Schubert problem, replacing
+-- checks that the input (Instance, k, n) is correct;
+--  returns the instance Schubert problem, replacing
 --  partitions by brackets, if necessary.
 -----------------------------------------------------
 -- Kludge alert:  if the tolerance for a determinant to be zero, ERROR'TOLERANCE, has not been set, it sets
@@ -85,8 +86,8 @@ LRnumber (List,ZZ,ZZ) := o -> (conds,k,n) -> (
 --  brackets as well as partitions.
 -----------------------------------------------------------------------------------------
 
-ensurePartitions= method()
-ensurePartitions(List,ZZ,ZZ) :=  (conds'flags, k,n) ->(
+ensureInstanceWithBrackets = method()
+ensureInstanceWithBrackets(List,ZZ,ZZ) :=  (conds'flags, k,n) ->(
     conds := conds'flags/first; -- list of Schubert conditions
     flags := conds'flags/last; -- list of flags
     --- check if these conditions impose a 0-dimensional Schubert Problem
@@ -169,29 +170,17 @@ partition2bracket(List,ZZ,ZZ) := (l, k, n) -> (
      brackt := for i to #l-1 list (n-k)+(i+1)-l#i
 )
 
---
---  Frank asks: What does this do?
---
 output2partition = method(TypicalValue => List)
 output2partition(List) := redpos ->(
-		n:= #redpos;
-		posn := select( redpos, x->x!= NC);
-		k:= #posn;
-		partitn := new MutableList from k:0;
-		apply(#posn, j->(
-			partitn#j = n-k+j-posn#j;
-		));
-		reverse sort toList partitn
-)
-
--- *** not using this function (we use redChkrPos instead)
-bracket2input = method(TypicalValue => List)
-bracket2input(List,ZZ) := (br,n) ->(
-     inp := for i to n-1 list NC;
-     inp = new MutableList from inp;
-     apply(br, b-> inp#(b-1) = b-1);
-     toList inp
-)
+    n:= #redpos;
+    posn := select( redpos, x->x!= NC);
+    k:= #posn;
+    partitn := new MutableList from k:0;
+    apply(#posn, j->(
+	    partitn#j = n-k+j-posn#j;
+	    ));
+    reverse sort toList partitn
+    )    
 
 -- not using this function in general, but when debugging,
 -- we might use this function with the columnReduce sometimes
@@ -209,12 +198,7 @@ output2bracket List := outp -> (
 --  Converts a bracket into a partition.  This is useful.
 --
 bracket2partition = method(TypicalValue => List)
-bracket2partition(List,ZZ) := (l, n) -> (
---     l = reverse sort l;
-     partitn := for i to #l-1 list (n-#l)+(i+1)-l#i 
-)
-
----------
+bracket2partition(List,ZZ) := (l, n) -> for i to #l-1 list (n-#l)+(i+1)-l#i 
 
 -------------------------
 -- printTree (useful when debugging)
@@ -227,9 +211,8 @@ printTree MutableHashTable := node ->(
 	scan(node.Children, c-> printTree c);
 )
 
-
 ----------------------
--- checkNewtonIteration
+-- checkNewtonIteration (may be useful for debugging)
 ----------------------
 -- Function that given a proposed
 -- solution to a Schubert Problem 
@@ -242,14 +225,6 @@ printTree MutableHashTable := node ->(
 --    (k,n) - sequence with (k,n) that indicate the Grassmannian G(k,n)
 -- Output:
 --    Newt - List where each entry is the l_1 norm of (s-NewtStep(s)) for s\in Solns
---------------------------------------------------------------------
---       ?? This is the info necessary to create a system of eqns
---------------------------------------------------------------------
---    *** NOT USING THIS FUNCTION ***
---
---   Frank thinks that this might be a useful alternative to checkIncidenceSolution.
---    However, he has yet to find an instance where checkIncidenceSolution fails (but it should sometime)
---
 checkNewtonIteration = method()
 checkNewtonIteration (List,List,Sequence) := (Solns, Pblm, kn)->(
     (k,n):= kn;
@@ -280,9 +255,8 @@ checkNewtonIteration (List,List,Sequence) := (Solns, Pblm, kn)->(
 	    ))
     )
 
-
 ------------------------
--- solutionsToAffineCoords
+-- solutionsToAffineCoords (for debugging; used by checkNewtonIteration)
 ------------------------
 -- writing the solutions in global coords
 -- as a set of solutions in terms of my
@@ -298,9 +272,6 @@ checkNewtonIteration (List,List,Sequence) := (Solns, Pblm, kn)->(
 -- One way to avoid this is taking a random linear 
 -- transformation of the solutions (and flags) before calling
 -- this function
---------------------------------------------------
--- *** ONLY used in checkNewtonIteration which is no longer used
---------------------------------------------------
 solutionsToAffineCoords = method()
 solutionsToAffineCoords List := Solutions ->(
     apply(Solutions, s->(
@@ -316,8 +287,6 @@ solutionsToAffineCoords List := Solutions ->(
 ----------------------
 -- checkIncidenceSolution
 ----------------------
--- August 20,2013
--- THIS FUNCTION NEEDS TO BE DELETED??  (Does it?)
 -- it was for testing solutions of Schubert varieties
 -- but this is not numerical stable... we replace this
 -- with a Newton step check
@@ -338,24 +307,24 @@ solutionsToAffineCoords List := Solutions ->(
 -----------------------
 checkIncidenceSolution = method()
 checkIncidenceSolution(Matrix, List) := (H, SchbPrblm) ->(
-  n:= numRows H;
-  k:= numColumns H;
-  verif:= true;
+  n := numRows H;
+  k := numColumns H;
+  verif := true;
   scan(SchbPrblm, T->(
     (l,F) := T; -- (partition, flag)
-    b:=partition2bracket(l,k,n);
-    HXF:=promote(H|F,ring H);
+    b := partition2bracket(l,k,n);
+    HXF := promote(H|F,ring H);
     scan(#b, r->( 
        c := b#r;
        rnk := k+c-(r+1)+1;
        if(rnk<= n) then(
-         chooseCols:= subsets(k+c,rnk);
-	 chooseRows:= subsets(n,rnk);
+         chooseCols := subsets(k+c,rnk);
+	 chooseRows := subsets(n,rnk);
 	 scan(chooseRows, rws->(
 	   scan(chooseCols, cls->(
 		   n := norm det submatrix(HXF_{0..k+c-1},rws,cls);
 		   if n>ERROR'TOLERANCE then(
-	               verif=false;
+	               verif = false;
 		       print("These are the NONZERO residuals");
  		       print(n);
 	               );
@@ -564,9 +533,6 @@ notAboveLambda(List,ZZ,ZZ) := (lambda,k,n) ->(
 -- Creates Matrix E_{m,l} --
 ---------------------------
 -- option: Inputs, an integer or symbol; if integer then 
-
--- this line of code makes no sense and doesn't work:
--- if version#"VERSION" =!= "1.8.2.1" then inputGate = "inputGate"
 
 skewSchubertVariety = method(TypicalValue=>Matrix, Options=>{Inputs=>53})
 skewSchubertVariety(Sequence,List,List) := o->(kn,l,m)->(

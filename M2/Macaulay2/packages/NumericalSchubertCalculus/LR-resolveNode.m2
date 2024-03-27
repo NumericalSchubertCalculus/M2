@@ -1,9 +1,15 @@
+---------------------------------
+-- Remarks on comments:
+-- (1) throughout this file "the paper" refers to
+--     our paper "Numerical Schubert Calculus..." Math.Comp. (2021) 
+-- (2) we reference the online notes of Vakil outlining the algorithm,
+--     and often follow its notation and terminology
+
 ----------------
 --Functions contained here but not exported:
 ----------------
 -- blackBoxSolve
--- verifyTarget
--- verifyStart
+-- verifySolutions
 -- globalStayCoords
 -- globalSwapCoords
 -- caseSwapStay
@@ -34,7 +40,7 @@ blackBoxSolve(MutableHashTable,List,Matrix) := (node,
    polynomials := squareUpPolynomials(numgens ring coordX, all'polynomials);
    -- time and keep track of the expensive part of the computation
    blckbxtime1 := cpuTime();
-   Soluciones:=solveSystem flatten entries polynomials;
+   Soluciones := solveSystem flatten entries polynomials;
    blckbxtime2 := cpuTime();
    << "-- blackbox solving cpuTime: " << (blckbxtime2 - blckbxtime1) << endl;
    node.SolutionsSuperset = apply(
@@ -44,49 +50,31 @@ blackBoxSolve(MutableHashTable,List,Matrix) := (node,
       -- (deleting the line after that)
          Soluciones,
           -- time solveSystem flatten entries polynomials, 
-         s-> norm sub(gens all'polynomials,matrix s)
+         s -> norm sub(gens all'polynomials,matrix s)
                 <= ERROR'TOLERANCE * norm matrix s * 
                    norm sub(last coefficients gens all'polynomials,FFF)
       ), -- end of select
-      ss-> (map(FFF,ring coordX,matrix ss)) coordX
+      ss -> (map(FFF,ring coordX,matrix ss)) coordX
    ); -- end of apply
 );
 
-verifyTarget = method();
-verifyTarget(Matrix,List) := (polys, targetSolutions) -> (
+verifySolutions = method();
+verifySolutions(Matrix,List) := (polys, solutions) -> (
 --
 -- DESCRIPTION :
 --   Verifies the solutions at the end of the homotopy.
 --
 -- IN :
 --   polys : matrix of polynomials;
---   startSolutions : solutions that should vanish as polys.
+--   solutions : solutions that should be zeroes of polys.
 --
-   scan(targetSolutions, p->assert (
+   scan(solutions, p->if not (
       s := matrix p;
       norm sub(polys,matrix{{1_FFF}}| s)
       < ERROR'TOLERANCE * max{1,norm s}
       * norm sub(last coefficients polys,FFF)
-      ) -- end assert
+      ) then error "a target solution appears to be wrong"
    ) -- end scan 
-);
-
-verifyStart = method();
-verifyStart(Matrix,List) := (polys, startSolutions) -> (
---
--- DESCRIPTION :
---   Verifies the solutions at the start of the homotopy.
---
--- IN :
---   polys : matrix of polynomials;
---   startSolutions : solutions that should vanish as polys.
---
-   scan(startSolutions, s->assert (
-      norm sub(polys,matrix{{0_FFF}|s})
-      < ERROR'TOLERANCE * max{1,norm matrix{s}}
-      * norm sub(last coefficients polys,FFF)
-      ) -- end assert
-   ) -- end scan startSolutions
 );
 
 globalStayCoords = method();
@@ -261,7 +249,7 @@ caseSwapStay(MutableHashTable,List,Matrix,Sequence) := (node,
    );
    polys := squareUpPolynomials(numgens ring all'polys-1, all'polys);
    -- check at t=0
-   if VERIFY'SOLUTIONS then verifyStart(polys, startSolutions);
+   if VERIFY'SOLUTIONS then verifySolutions(polys, startSolutions);
    -- track homotopy and plug in the solution together with t=1 into Xt
    (ti,targetSolutions) := toSequence elapsedTiming trackHomotopyNSC(polys,startSolutions);
    statsIncrementTrackingTime ti; 
@@ -309,7 +297,7 @@ verifyParent(MutableHashTable,List) := (father, parent'solutions) -> (
       scan(#a, i -> 
 	  if not (
               (abs a#i < ERROR'TOLERANCE and parentXlist#i == 0)
-              or (abs(a#i-1) < ERROR'TOLERANCE and parentXlist#i == 1)
+              or (abs((a#i)-1) < ERROR'TOLERANCE and parentXlist#i == 1)
               or (parentXlist#i != 0 and parentXlist#i != 1)
 	      )
 	  then error "a solution does not fit the expected pattern (numerical error occurred)"         	 
@@ -344,13 +332,12 @@ solveCases(MutableHashTable,List,Matrix) := (node,
       red := last father.Board;     
       red'sorted := sort delete(NC, red);
       M := node.FlagM;
-      --  The moving flag is modified.  In the paper, this is the flag M' defined on 
-      --   page 12 (Reference needs to be put in)
+      -- The moving flag is modified.
       M'':= M_{0..(r-1)} | M_{r} - M_{r+1} | M_{r}| M_{(r+2)..(n-1)};
       -- Defined the flag for the next level if it is empty
       if not father.?FlagM then father.FlagM = M''; 
       -- If that flag exists, checks it equals this one, for consistency.
-      assert (father.FlagM == M'');
+      if (father.FlagM != M'') then error "flags are inconsistent";
       if DBG>1 then (
          << "-- FROM " << node.Board << " TO " << father.Board << endl;
          << "using this move: " << movetype<<endl;
@@ -363,8 +350,7 @@ solveCases(MutableHashTable,List,Matrix) := (node,
          if node.Solutions == {} then
             {} -- means: not implemented
          else if movetype#1 == 2 then ( -- case movetype = (_,2).  The conditions on the k-plane do not change.
-	     --  This is case I in Section 3.3.1 in the paper, and it is just a coordinate change,
-	     --   see Equation (???) on page 13.
+	     --  This is case I in Section 3.2 in the paper, and it is just a coordinate change,
 	     --  The paper uses Y for the Stiefel coordinates, and only a single '.  
             apply(node.Solutions, X -> (
                X'' := (X^{0..r-1}) || (-X^{r+1})
@@ -425,104 +411,105 @@ resolveNode(MutableHashTable,List) := (node,remaining'conditions'flags) -> (
 --       (8) SolutionsSuperSet is made when the BLACKBOX option is on.
 --     remaining'conditions'flags : will be transformed.
 --
-   if not node.IsResolved then (
-      n := #node.Board#0;
-      coordX := makeLocalCoordinates node.Board;
-      -- local coordinates X = (x_(i,j))
-      if numgens ring coordX == 0 then ( -- need to move this to playcheckers
-         assert(#remaining'conditions'flags == 0);
-         if DBG>0 then 
-            print "resolveNode reached node of no remaining conditions";
-         node.Solutions = {lift(coordX,FFF)};
-         node.IsResolved = true;
-         node.FlagM= rsort id_(FFF^n);
-      ) -- end if numgens ring coordX == 0
-      else if #remaining'conditions'flags == 0 then ( -- check consistency???
-         node.Solutions = {};
-         node.IsResolved = true;
-         node.FlagM = rsort id_(FFF^n);
-      )
-      else ( -- coordX has variables
-         black := first node.Board;
-         if node.Children == {} then
-            node.FlagM = matrix mutableIdentity(FFF,n) -- change here
-         else
-            scan(node.Children, c->resolveNode(c,remaining'conditions'flags));
-         if node.Children == {} then ( 
-            lambda := output2partition(last node.Board);
-            k := #lambda;
-            validpartition := true;
-            scan(lambda, i-> if i>n-k then validpartition = false);
-            if not validpartition then (
-               << lambda << endl;
-               error( "partition above is not valid")
-            ) else (
-               -- we take the next flag at the bottom of the checkerboard tree
-               (l3,F3) := first remaining'conditions'flags;
-               MM := lift(MovingFlag'at'Root n,FFF);
-               ID := id_(FFF^n);
-               (A,T1,T2) := moveFlags2Flags({MM,ID},{ID,F3});
-               Ainv := solve(A,ID);
-               newRemainingFlags := drop(remaining'conditions'flags,1);
-               newRemainingFlags = apply(newRemainingFlags,
-                  CF->(
-                         (C, F) := CF;
-                         (C, Ainv*F)
-                      )
-               );
-               if DBG>0 then print "-- making a recursive call to resolveNode";
-               if DBG>1 then (
-                  print(node.Board);
-                  print(lambda);
-                  print("remaining conditions:");
-                  print(remaining'conditions'flags);
-               );
-               new'l := output2partition last node.Board;
-	       -- Abraham 15-Oct-2015:
-	       l3 = verifyLength(l3,k);
-	       checkPartitionsOverlap := (new'l+reverse l3)/(i->n-k-i);
-    	       if min(checkPartitionsOverlap) < 0 then (
-		   node.Solutions = {};
-         	   node.IsResolved = true;
-	       )else(
-	       --
-               	  newDag := playCheckers(new'l,l3,k,n);
-               	  resolveNode(newDag,newRemainingFlags); -- recursive call
-               	  S := newDag.Solutions; 
-               	  if DBG>1 then
-                     << "the previous level gets solution: " << S << endl;
-               	  brack := output2bracket last node.Board;
-               	  -- compute the bracket affecting the standard flag
-               	  -- we use the bracket for column reduction of the solutions;
-               	  if DBG>1 then << "the bracket" << brack << endl;
-                  node.Solutions = if #newRemainingFlags > 0 then (
-                      assert(MM == newDag.FlagM);
-                      apply(S, s->columnReduce(A*MM*s,brack)) -- A is M^{-1} ??? 
-               	  ) else (
-                     MM = newDag.FlagM;
-                     (A,T1,T2) = moveFlags2Flags({MM,ID},{ID,F3});
-                     apply(S, s->columnReduce(A*MM*s,brack))
-                  );
-	          if DBG>1 then (
-                     print "... and the transformed solutions are:";
-                     print(node.Solutions);
-                     print "-- end (recursive call to resolveNode)"
-               	  );
-	          node.IsResolved = true
-               );--end else of the if checkPartitionsOverlap
-	   ); -- end else of the if not validpartition
-         ); -- end if node.children == {}
-         solveCases(node,remaining'conditions'flags,coordX);
-         if VERIFY'SOLUTIONS and BLACKBOX then
-            blackBoxSolve(node,remaining'conditions'flags,coordX);
-         if VERIFY'SOLUTIONS and node.?SolutionsSuperset then (
-            -- check against the blackbox solutions
-            scan(node.Solutions, X->
-               assert(position(node.SolutionsSuperset,
-               Y->norm(Y-X)<ERROR'TOLERANCE) =!= null)
-            ); -- end scan node.Solutions
-         );
-      ); -- end coordX has variables
-      node.IsResolved = true;
-   ); -- end if not node.IsResolve
+if not node.IsResolved then (
+    n := #node.Board#0;
+    coordX := makeLocalCoordinates node.Board;
+    -- local coordinates X = (x_(i,j))
+    if numgens ring coordX == 0 then (
+	if #remaining'conditions'flags != 0 then error "nonzero number of conditions remain not processed";
+	if DBG>0 then 
+	print "resolveNode reached node of no remaining conditions";
+	node.Solutions = {lift(coordX,FFF)};
+	node.IsResolved = true;
+	node.FlagM = rsort id_(FFF^n);
+	) -- end if numgens ring coordX == 0
+    else if #remaining'conditions'flags == 0 then (
+	node.Solutions = {};
+	node.IsResolved = true;
+	node.FlagM = rsort id_(FFF^n);
+	)
+    else ( -- coordX has variables
+	black := first node.Board;
+	if node.Children == {} then
+	node.FlagM = matrix mutableIdentity(FFF,n) -- change here
+	else
+	scan(node.Children, c->resolveNode(c,remaining'conditions'flags));
+	if node.Children == {} then ( 
+	    lambda := output2partition(last node.Board);
+	    k := #lambda;
+	    validpartition := true;
+	    scan(lambda, i-> if i>n-k then validpartition = false);
+	    if not validpartition then (
+		<< lambda << endl;
+		error( "partition above is not valid")
+		) else (
+		-- we take the next flag at the bottom of the checkerboard tree
+		(l3,F3) := first remaining'conditions'flags;
+		MM := lift(MovingFlag'at'Root n,FFF);
+		ID := id_(FFF^n);
+		(A,T1,T2) := moveFlags2Flags({MM,ID},{ID,F3});
+		Ainv := solve(A,ID);
+		newRemainingFlags := drop(remaining'conditions'flags,1);
+		newRemainingFlags = apply(newRemainingFlags,
+		    CF->(
+			(C, F) := CF;
+			(C, Ainv*F)
+			)
+		    );
+		if DBG>0 then print "-- making a recursive call to resolveNode";
+		if DBG>1 then (
+		    print(node.Board);
+		    print(lambda);
+		    print("remaining conditions:");
+		    print(remaining'conditions'flags);
+		    );
+		new'l := output2partition last node.Board;
+		-- Abraham 15-Oct-2015:
+		l3 = verifyLength(l3,k);
+		checkPartitionsOverlap := (new'l+reverse l3)/(i->n-k-i);
+		if min(checkPartitionsOverlap) < 0 then (
+		    node.Solutions = {};
+		    node.IsResolved = true;
+		    ) else (
+		    newDag := playCheckers(new'l,l3,k,n);
+		    resolveNode(newDag,newRemainingFlags); -- recursive call
+		    S := newDag.Solutions; 
+		    if DBG>1 then
+		    << "the previous level gets solution: " << S << endl;
+		    brack := output2bracket last node.Board;
+		    -- compute the bracket affecting the standard flag
+		    -- we use the bracket for column reduction of the solutions;
+		    if DBG>1 then << "the bracket" << brack << endl;
+		    node.Solutions = if #newRemainingFlags > 0 then (
+			if MM != newDag.FlagM then error "the flags don't match";
+			apply(S, s->columnReduce(A*MM*s,brack)) -- A is M^{-1}
+			) else (
+			MM = newDag.FlagM;
+			(A,T1,T2) = moveFlags2Flags({MM,ID},{ID,F3});
+			apply(S, s->columnReduce(A*MM*s,brack))
+			);
+		    if DBG>1 then (
+			print "... and the transformed solutions are:";
+			print(node.Solutions);
+			print "-- end (recursive call to resolveNode)"
+			);
+		    node.IsResolved = true
+		    ); -- end else of the if checkPartitionsOverlap
+		); -- end else of the if not validpartition
+	    ); -- end if node.children == {}
+	solveCases(node,remaining'conditions'flags,coordX);
+	if VERIFY'SOLUTIONS and BLACKBOX then
+	blackBoxSolve(node,remaining'conditions'flags,coordX);
+	if VERIFY'SOLUTIONS and node.?SolutionsSuperset then (
+	    -- check against the blackbox solutions
+	    scan(node.Solutions, X -> if position(
+		    node.SolutionsSuperset,
+		    Y -> norm(Y-X)<ERROR'TOLERANCE
+		    ) === null then
+		error "solution is not found in a solution superset"
+		);
+	    );
+	); -- end coordX has variables
+    node.IsResolved = true;
+    ); -- end if not node.IsResolve
 );

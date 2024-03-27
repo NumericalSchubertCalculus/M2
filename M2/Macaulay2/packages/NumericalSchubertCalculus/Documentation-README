@@ -204,8 +204,8 @@ squareUpPolynomials(ZZ,Ideal)
 blackBoxSolve
 				-- used to verify solutions vs. blackbox solver (only if resolveNodes is ran with the options
 				-- VERIFY'SOLUTIONS and BLACKBOX
-verifyStart
-				-- verifies the given solutions at the start of a homotopy
+verifySolutions
+				-- verifies the given solutions 
 globalStayCoords
 				-- the global (change of) coordinates of solutions in the LR-homotopy in the Stay Case
 globalSwapCoords

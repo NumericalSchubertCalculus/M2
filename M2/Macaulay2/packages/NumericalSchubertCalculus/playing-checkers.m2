@@ -1,3 +1,10 @@
+---------------------------------
+-- Remarks on comments:
+-- (1) throughout this file "the paper" refers to
+--     our paper "Numerical Schubert Calculus..." Math.Comp. (2021) 
+-- (2) we reference the online notes of Vakil outlining the algorithm,
+--     and often follow its notation and terminology
+
 --------------------------------------
 -- produces a matrix that parametrizes
 -- the "big cell" of Gr(k,n)
@@ -9,10 +16,6 @@ bigCellLocalCoordinates(ZZ,ZZ) := (k,n) -> (
     transpose genericMatrix(R,k,n-k) || map(R^k)
     )
 
------------------------------
--- Numerical LR-Homotopies
------------------------------
-
 ---------------------
 -- redChkrPos 
 --
@@ -20,18 +23,18 @@ bigCellLocalCoordinates(ZZ,ZZ) := (k,n) -> (
 -- red checkers at the start of a checkerboard game
 ---------------------
 -- input: two Schubert conditions l and m written 
---	   as brackets the Grassmannian G(k,n)
+--	   as brackets in the Grassmannian G(k,n)
 --
 -- Output: checkboard coordinates for the 
 --         red checkers
 ---------------------
 -- example: for {2,1}*{2} in G(3,6)
 --
---partition2bracket({2,1},3,6)
+-- partition2bracket({2,1},3,6)
 --     o = {2, 4, 6}
---partition2bracket({2},3,6)
+-- partition2bracket({2},3,6)
 --     o = {2, 5, 6}
---redChkrPos({2,4,6},{2,5,6},3,6)  
+-- redChkrPos({2,4,6},{2,5,6},3,6)  
 --     o = {NC, 5, NC, 4, NC, 1}
 --------------------
 redChkrPos = method(TypicalValue => List)
@@ -67,17 +70,12 @@ redChkrPos(List,List,ZZ,ZZ) := (l,m,k,n) -> (
 --       critrow - the critical row
 moveRed = method(TypicalValue => List)
 moveRed(List,List,List) := (blackup, blackdown, redposition) -> (
-    ------------------------------------------------
-    -- We need to check first if it is a valid configuration
-    --
-    -- (no longer need as it is checked before calling playCheckers) -- Abr. 15.0ct.15 
-    ------------------------------------------------
     n := #redposition; -- n is the size of the checkboard
-    split:=0;
+    split := 0;
     critrow := 0;
     critdiag := 0;
-    g:=2; -- g answers where is the red checker in the critical row
-    r:=2; -- r answers where is the red checker in the critical diagonal
+    g := 2; -- g answers where is the red checker in the critical row
+    r := 2; -- r answers where is the red checker in the critical diagonal
     -- r,g is the coordinate of the moving situation in the 3x3 table of moves
     indx := new List;
     redpos := new MutableList from redposition;
@@ -88,15 +86,15 @@ moveRed(List,List,List) := (blackup, blackdown, redposition) -> (
 	       	critrow = j;
 	       	if j == blackdown#0 then g=0 else g=1;
 	  	) 	
-     	    ));    
+	    ));    
     -- find the critical diagonal, and how the red checkers sit with respect to it
-    indx= for i to blackdown#0-1 list i;
+    indx = for i to blackdown#0-1 list i;
     indx = reverse indx;
     apply(indx, j->(
 	    if blackdown#0-j+redpos#j == n then(
 	       	critdiag = j;
 	       	if blackup === {j,redpos#j} then r=0 else r=1;
-	  	)
+		)
      	    ));
     if r == 0 then (
 	redpos#(blackup#0)=redpos#(blackup#0)-1;
@@ -121,7 +119,7 @@ moveRed(List,List,List) := (blackup, blackdown, redposition) -> (
 	       	);
 	    );
      	) else if r == 2 and g == 0 then (
-	redpos#(blackup#0)=redpos#critrow;
+	redpos#(blackup#0) = redpos#critrow;
 	redpos#critrow = NC;
      	);
     if split == 0 then {(toList redpos,{r,g,split})} else {(redposition,{r,g,0}), (toList redpos,{r,g,split})}
@@ -155,19 +153,19 @@ moveCheckers Array := blackred -> (
      blackposition := first blackred;
      redposition := last blackred;
      n := #redposition; -- n is the size of the board
-     splitcount:=0;
-     copies:=0;
+     splitcount := 0;
+     copies := 0;
      -- determine the columns of the descending and ascending black checkers
      -- blackdown1 is the column to the right of the column of the lowest black checker
 	 -- blackup1 is the column of the checker that is one row lower than the checker 
 	 --  in blackdown1 
-     blackdown1 := position(blackposition, x->x == n-1) + 1;
+     blackdown1 := position(blackposition, x -> x == n-1) + 1;
      if blackdown1 == n then return ({},"leaf");
-     blackup1 := position(blackposition, x-> x == 1+blackposition#blackdown1);
+     blackup1 := position(blackposition, x -> x == 1+blackposition#blackdown1);
      -- Determine the rows of the pair of black checkers that will be sorted.  They are row r and 
      --    r+1 in the paper with r the critical row of the falling checker.
      --  n-blackdown1 is one more than the number of checkers in the upper right corner 
-     --     (region A in paper)
+     --     (region A in the paper)
      --  blackup1 is the number of checkers above and to the left of rising checker (as we are 0-based)
      --  Their sum is one more than the number of checkers above the moving pair = row of rising checker
      blackup2 := n-blackdown1+blackup1;
@@ -177,8 +175,8 @@ moveCheckers Array := blackred -> (
      blackposition = new MutableList from blackposition;
      blackposition#blackup1 = blackposition#blackup1 - 1;
      blackposition#blackdown1 = blackposition#blackdown1 + 1;
-     (
-	 apply(listofredpositions, r-> [toList blackposition, 
+     return (
+	 apply(listofredpositions, r -> [toList blackposition, 
 		 first r, -- new redposition
 		 last r -- new type of move
 		 ]), 
@@ -203,7 +201,7 @@ moveCheckers Array := blackred -> (
 -- NOTE: the tracking time we report is the whole
 --       time used when tracking 
 --
--- CAVEAT: printStatistics will display the information
+-- NOTE: printStatistics will display the information
 --        about moves performed every time you run
 --        a checker board game. Thus, if you use the
 --        function solveSchubertProblem twice, the function 
@@ -382,28 +380,26 @@ makeLocalCoordinates Array := blackred ->(
   n := #redposition; -- n is the size of the board
   -- we find how many black checkers are in northwest to a given red
   rowsred := sort select(redposition, r->r=!=NC);
-  colsred := apply(rowsred, r -> position(redposition, j-> j == r));
+  colsred := apply(rowsred, r -> position(redposition, j -> j == r));
   E := new MutableHashTable;
     for r to #rowsred-1 do(
       E#(rowsred#r,r) = 1;
       variablerows := take(blackposition,colsred#r+1);
-      variablerows = select(variablerows, b-> b< rowsred#r);
-      scan(variablerows, j->(
-        if member(j,rowsred) and position(redposition, i-> i == j) < colsred#r then
+      variablerows = select(variablerows, b -> b < rowsred#r);
+      scan(variablerows, j -> (
+        if member(j,rowsred) and position(redposition, i -> i == j) < colsred#r then
 	  variablerows = delete(j,variablerows);
       ));
-      scan(variablerows, col-> (
+      scan(variablerows, col -> (
         E#(col,r)=VAR;
       ));
    );
-   x:= symbol x;
-   R:=FFF[apply(select(sort keys E, k-> E#k===VAR), k-> x_k)];
+   x := symbol x;
+   R := FFF[apply(select(sort keys E, k -> E#k===VAR), k -> x_k)];
    X := mutableMatrix(R,n,#rowsred);
-   scan(keys E, k-> X_k = if E#k === 1 then 1 else x_k);
+   scan(keys E, k -> X_k = if E#k === 1 then 1 else x_k);
    matrix X
 )
-
-load "NumericalSchubertCalculus/LR-resolveNode.m2"
 
 ---------------
 -- solveSchubertProblem
@@ -425,21 +421,21 @@ load "NumericalSchubertCalculus/LR-resolveNode.m2"
 --    list of solutions
 ---------------
 solveSchubertProblem = method(Options=>{LinearAlgebra=>true})
-solveSchubertProblem(List,ZZ,ZZ) := o -> (SchPblm,k,n) ->(
+solveSchubertProblem(List,ZZ,ZZ) := o -> (SchPblm,k,n) -> (
     -- SchPblm is a list of sequences with two entries  a condition and a flag
     -- Check that it does indeed form a Schubert problem, and convert the conditions to partitions (if they were brackets)
-    SchPblm = ensurePartitions(SchPblm,k,n);
+    SchPblm = ensureInstanceWithBrackets(SchPblm,k,n);
 
     twoconds := take(SchPblm,2);
     remaining'conditions'flags := drop(SchPblm,2);
     -- take the first two conditions
-    l1:=verifyLength(first first twoconds,k);
-    l2:=verifyLength(first last twoconds,k);
-    F1:=promote(last first twoconds,FFF);
-    F2:=promote(last last twoconds,FFF);
+    l1 := verifyLength(first first twoconds,k);
+    l2 := verifyLength(first last twoconds,k);
+    F1 := promote(last first twoconds,FFF);
+    F2 := promote(last last twoconds,FFF);
     resetGGstash(); -- resets GGstash in LR-makePolynomials.m2    
-    Slns:={};
-    checkPartitionsOverlap := (l1+reverse l2)/(i->n-k-i);
+    Slns := {};
+    checkPartitionsOverlap := (l1+reverse l2)/(i -> n-k-i);
     if min(checkPartitionsOverlap) < 0 then
        Slns
     else(
@@ -471,7 +467,7 @@ solveSchubertProblem(List,ZZ,ZZ) := o -> (SchPblm,k,n) ->(
 	-- to F3' .. Fm' where Fi' = A*Fi
 	new'remaining'conditions'flags := apply(
 	    remaining'conditions'flags, CF->(
-		(C,F):=CF;
+		(C,F) := CF;
 		(C,A*F)
 	    ));
 	newDag := playCheckers(l1,l2,k,n);
@@ -486,23 +482,10 @@ solveSchubertProblem(List,ZZ,ZZ) := o -> (SchPblm,k,n) ->(
 	--
 	--  we need to make a change of coordinates back to the user-defined flags
 	-- that is, send (FlagM,Id)-->(F1,F2), which is done by A^(-1)	
-	-------------------------------
-	--############ Fork to decide if you want to do this
-	-- change of flags via homotopy or via Linear Algebra
-	-- ########################################
 	if o.LinearAlgebra then(
 	    Ainv := solve(A,ID);
 	    Ainv*flgM*newDag.Solutions
-	    )else(
-	    -- #### NOW THIS IS BROKEN!! because is was based on wrong math
-	    -- we need to use homotopy to transform the solutions to the
-	    -- user defined flags.
-	    --
-	    -- A is the matrix above such that
-	    --          A*F1 = FlagM*T1 (representing the same flag as F1)
-	    --          A*F2 = ID*T2 (representing the same flag as F2)
-	    --LocalFlags1 := {F1,F2}; 
-	    --LocalFlags2:= {flgM,ID};
+	    ) else ( -- change of flags via homotopy 
 	    T1 := At1t2_1;    
 	    T2 := At1t2_2;    
 	    scan(remaining'conditions'flags, c-> (
@@ -521,22 +504,10 @@ solveSchubertProblem(List,ZZ,ZZ) := o -> (SchPblm,k,n) ->(
 	    changeFlags(flgM*newDag.Solutions, -- these are matrices in absolute coordinates
 	    	(conds, LocalFlags2, LocalFlags1), OneHomotopy=>false
 		)
-	    ) --
+	    )
 	)
     )-- end of solveSchubertProblem
 
---------- March 24, 2013
--- created a linear homotopy
--- from one set of flags to another
--- by changing column by column
--- for each of the flags 
---
--- Later, we can speed up a little
--- by just creating the homotopy
--- between the flags, by changing
--- only the relevant parts of the 
--- flag...
---------------------------
 ---------------------------------
 --- solutionToChart
 ---------------------------------
@@ -637,9 +608,10 @@ normalizeColumn = method(TypicalValue => Matrix)
 normalizeColumn(Matrix,ZZ,ZZ) := (X,r,j) -> (  
      k := numgens source X;
      if j=!=null then(
-	  X = X_{0..j-1} | (1/X_(r,j))*X_{j}  | X_{j+1..k-1}; 
-	  --X''_(r,j) =-1/(1+X_(r,j)); -- error in Ravi's notes: should be -X_(r+1,j)/(1+X_(r,j))
-	  --X''_(r+1,j) = 1; -- this is correct, but is also already taken care of 
+	  X = X_{0..j-1} | (1/X_(r,j))*X_{j}  | X_{j+1..k-1};
+	  -- This is an error in some notes published online: 
+	  -- X''_(r,j) =-1/(1+X_(r,j)); -- error in Ravi's notes: should be -X_(r+1,j)/(1+X_(r,j))
+	  -- X''_(r+1,j) = 1; -- this is correct, but is also already taken care of 
 	  );
      matrix X
      )
@@ -703,21 +675,18 @@ redCheckersColumnReduce2(Matrix, MutableHashTable) := (X'', father) -> (
      red := delete(NC,last father.Board);
      redSorted := sort red; -- numbers of the rows where red checkers are
      apply(#redSorted, r->( -- column r is to be reduced 
---	 -- find the redcheckers below that can see the current redChecker
---	 witnessReds:=select(drop(red,r), i->i>red#r);
---	 j:={};
---         scan(witnessReds, i-> j=append(j,position(redSorted, l-> l==i)));
-     	 col'of'r'on'board := position(last father.Board, i->i==redSorted#r); 
-	 reducers := select(0..r-1, 
-	      j->position(last father.Board, i->i==redSorted#j)<col'of'r'on'board
-	      );  
-	 scan(reducers, j->(
-	      		-- reduce the columns for red checkers that have higher number and "see" the red checker in the row r+1
-			scan(n, i-> (
-			     	  X''_(i,r) = X''_(i,r) - X''_(redSorted#j,r)*X''_(i,j);
-			     	  ));
-		   	));
-	 ));
+	     -- find the redcheckers below that can see the current redChecker
+	     col'of'r'on'board := position(last father.Board, i->i==redSorted#r); 
+	     reducers := select(0..r-1, 
+		 j->position(last father.Board, i->i==redSorted#j)<col'of'r'on'board
+		 );  
+	     scan(reducers, j->(
+		     -- reduce the columns for red checkers that have higher number and "see" the red checker in the row r+1
+		     scan(n, i-> (
+			     X''_(i,r) = X''_(i,r) - X''_(redSorted#j,r)*X''_(i,j);
+			     ));
+		     ));
+	     ));
      matrix X''
      )
 
@@ -745,10 +714,7 @@ columnReduce=method(TypicalValue=> Matrix )
 columnReduce(Matrix,List) := (S,b)->(
     k := numColumns S;
     n := numRows S;
-    -- we use the bracket instead of the partition
-    -- b := output2bracket (redcheckers);
-    -- b := partition2bracket(l,k,n);
-    M:= S;
+    M := S;
     apply(k-1, col->(
 	    -- editing with respect to the pivot of the (col)th column
 	    r := b_(col)-1; --row where the ith pivot is
@@ -767,9 +733,6 @@ columnReduce(Matrix,List) := (S,b)->(
 TEST ///
 load "NumericalSchubertCalculus/TST/columnReduce.m2"
 ///    
-
-load "NumericalSchubertCalculus/LR-makePolynomials.m2"
-load "NumericalSchubertCalculus/LR-ParameterHomotopy.m2"
 
 -----------------------------
 -- Tracks a homotopy
@@ -826,7 +789,7 @@ trackHomotopyNSC (Matrix,List) := (H,S) -> (
 	 );
      if #all'sols < #S then error "trackHomotopy: singularity encountered";
      if #all'sols > #S then error "trackHomotopy: more solutions found than expected";
-     if VERIFY'SOLUTIONS then verifyTarget(H, all'sols);
+     if VERIFY'SOLUTIONS then verifySolutions(H, all'sols);
      all'sols 
      )
 
@@ -850,8 +813,8 @@ trackHomotopyNSC (Matrix,List) := (H,S) -> (
 --
 -- !! Show a better example!!
 --
---blackCheckersPosition = {0,1,3,4,5,2};
---redCheckersPosition = {0, NC, NC, 4, NC, NC};
+-- blackCheckersPosition = {0,1,3,4,5,2};
+-- redCheckersPosition = {0, NC, NC, 4, NC, NC};
 --
 -- simNode = new MutableHashTable
 -- simNode.Board =  [{0, 1, 2, 4, 5, 3}, {0, NC, NC, 4, NC, NC}]
@@ -866,7 +829,3 @@ isRedCheckerInRegionE(ZZ,MutableHashTable) := (i,node) -> (
      e1 := position(black, b->b==r);
      i < e1 and i >= e0
      )
-
------------------------------
--- end Numerical LR-Homotopies
------------------------------

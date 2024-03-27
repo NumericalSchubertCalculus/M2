@@ -80,12 +80,11 @@ DBG = 0
 --
 setVerboseLevel = method()
 setVerboseLevel ZZ := i->DBG=i
---
+
+
+-- Debug options
 VERIFY'SOLUTIONS = true
 BLACKBOX = false
-
---INITIALIZING THE KEYS OF NODE
---Board= symbol Board
 
 setDebugOptions = method(Options=>{"debug"=>null,"verify solutions"=>null,"blackbox"=>null})
 installMethod(setDebugOptions, o -> () -> scan(keys o, k->if o#k=!=null then
@@ -94,14 +93,13 @@ installMethod(setDebugOptions, o -> () -> scan(keys o, k->if o#k=!=null then
 	else if k === "blackbox" then BLACKBOX = o#k
 	))
  
-
-
+load "NumericalSchubertCalculus/LR-resolveNode.m2"
+load "NumericalSchubertCalculus/LR-makePolynomials.m2"
+load "NumericalSchubertCalculus/LR-ParameterHomotopy.m2"
 load "NumericalSchubertCalculus/playing-checkers.m2"
 load "NumericalSchubertCalculus/PHCpack-LRhomotopies.m2"
 load "NumericalSchubertCalculus/pieri.m2"
 load "NumericalSchubertCalculus/service-functions.m2"
---load "NumericalSchubertCalculus/UnderDevelopment/galois.m2"
-
 
 -------------------
 -- Documentation --
@@ -134,9 +132,3 @@ installPackage "NumericalSchubertCalculus"
 installPackage ("NumericalSchubertCalculus", RerunExamples=>true)
 installPackage ("NumericalSchubertCalculus", RunExamples=>false)
 
---n = 6;
---SchubProb =  matrix{{3, 2,4,6}};
---(f, p, s) := LRtriple(n,SchubProb);
---(R, pols, sols, fixedFlags, movedFlag, solutionPlanes) = parseTriplet(f, p, s)
-viewHelp NumericalSchubertCalculus
---first PieriHomotopies(2,2)

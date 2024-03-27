@@ -1,3 +1,5 @@
+-- this is some old code not loaded by the package
+
 export {
     "findGaloisElement",
     "isFullSymmetric",

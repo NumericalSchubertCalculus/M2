@@ -3,10 +3,8 @@
 ---------------------------------
 -- m random linear combinations of generators of the ideal
 squareUpPolynomials = method()
-squareUpPolynomials(ZZ,Matrix) := (m,eqs) ->  eqs
--- seems that if you give a matrix, then it won't do anything...
+squareUpPolynomials(ZZ,Matrix) := (m,eqs) ->  squareUpPolynomials(m,ideal eqs)
 squareUpPolynomials(ZZ,Ideal) := (m,eqs) ->  if numgens eqs == m then gens eqs else gens eqs * random(FFF^(numgens eqs), FFF^m)  
-
 
 -- -----------------------------
 -- Naive way to makePolynomials 
@@ -158,7 +156,6 @@ makePolynomials(Matrix, List, List) := o -> (MX, conds, sols) -> if o.Strategy =
 	    m := k; -- number of new variables
     	    R = C monoid([gens R, L_(i,1)..L_(i,m)]);
 	    colL := transpose matrix{take(gens R,-m)}; 	    
-    	    --MM := MX|F_{0..k-1}; for this m := 2*k above
 	    a := first first conds#i;
 	    FinvMX := Finv*MX;
 	    MM := FinvMX^{n-k-a+1..n-1};
@@ -198,31 +195,14 @@ changeFlags(List, Sequence) := o->(solutionsA, conds'A'B)->( -- solutionsA is a 
    (conditions,flagsA,flagsB) := conds'A'B; 
    SchA := apply(#conditions, i->(conditions#i,flagsA#i));
    SchB := apply(#conditions, i->(conditions#i,flagsB#i));
-   -- August 20, 2013:
-   -------------------
-   -- commenting th checkIncidenceSolutions check as we discovered
-   -- this is a test that is numerical unstable!
-   --assert all(solutionsA, s->checkIncidenceSolution(s,SchA));
    s := first solutionsA;
    n := numrows s;
    k := numcols s;
    x := symbol x;
    R := FFF[x_(1,1)..x_(k,n-k)];
    MX := sub(random(FFF^n,FFF^n),R)*(transpose genericMatrix(R,k,n-k)||id_(FFF^k)); -- random chart on G(k,n)
-   -- THE SOLUTIONS MIGHT NOT FIT MX (that's why I have an error for some problems)
-   
-   -- NEW: solutionsB := changeFlags'OneHomotopy(MX,solutionsA/(s->solutionToChart(s,MX)),conds'A'B);
-   -- OLD: 
    solutionsB := changeFlags(MX,solutionsA/(s->solutionToChart(s,MX)),conds'A'B,o);
-   
-   -- the following clean is a hack, instead, we need to do a newton step check
-   -- when we changeFlags as there is a numerical check in there... 
-   -- the following is a hack
-   ret := apply(solutionsB, s-> clean(ERROR'TOLERANCE^2,sub(MX, matrix{s})));
-   --print(" changing solutions from flagsA to FlagsB using parameter homotopy\n we verify the returned solutions using newton Iteration");
-   --print(checkNewtonIteration(ret,SchB,(k,n))); --this is not working with the new way to create eqns
-   --assert all(ret, s->checkIncidenceSolution(s,SchB));
-   ret
+   apply(solutionsB, s-> clean(ERROR'TOLERANCE^2,sub(MX, matrix{s}))) -- replace numbers close to 0 with 0
    )
 
 ---------------------------------
@@ -315,9 +295,8 @@ TEST ///
 -- moves solutions wrt flags A
 -- to solutions wrt flags B
 --
-restart
 needsPackage "NumericalAlgebraicGeometry"
-debug needsPackage "NumericalSchubertCalculus"
+importFrom_NumericalSchubertCalculus {"makePolynomials", "changeFlags'OneHomotopy"}
 FFF = CC_53
 Rng = FFF[x_{1,1}, x_{1,2}];
 MX = matrix{{x_{1,1}, x_{1,2}}, {1,0}, {0,1}, {0,0}};
@@ -330,7 +309,7 @@ sols = solveSystem (
 Flags2 = {id_(FFF^4)_{1,3,0,2}, rsort id_(FFF^4)} --we should get (0,0) as solution
 solsT = changeFlags(MX, sols/coordinates, (conds, Flags1, Flags2))
 assert(clean_0.0001 matrix solsT == 0) -- check that the solutions are actually (0,0)
-solsT = changeFlags'OneHomotopy(MX, sols, (conds, Flags1, Flags2))
+solsT = changeFlags'OneHomotopy(MX, sols/coordinates, (conds, Flags1, Flags2))
 assert(clean_0.0001 matrix solsT == 0) -- check that the solutions are actually (0,0)
 
 /// --end of TEST
