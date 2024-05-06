@@ -789,7 +789,7 @@ trackHomotopyNSC (Matrix,List) := (H,S) -> (
 	 );
      if #all'sols < #S then error "trackHomotopy: singularity encountered";
      if #all'sols > #S then error "trackHomotopy: more solutions found than expected";
-     if VERIFY'SOLUTIONS then verifySolutions(H, all'sols);
+     if VERIFY'SOLUTIONS then verifyTarget(H, all'sols);
      all'sols 
      )
 

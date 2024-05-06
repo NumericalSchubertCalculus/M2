@@ -9,7 +9,8 @@
 --Functions contained here but not exported:
 ----------------
 -- blackBoxSolve
--- verifySolutions
+-- verifyTarget
+-- verifyStart
 -- globalStayCoords
 -- globalSwapCoords
 -- caseSwapStay
@@ -58,23 +59,42 @@ blackBoxSolve(MutableHashTable,List,Matrix) := (node,
    ); -- end of apply
 );
 
-verifySolutions = method();
-verifySolutions(Matrix,List) := (polys, solutions) -> (
+
+verifyTarget = method();
+verifyTarget(Matrix,List) := (polys, targetSolutions) -> (
 --
 -- DESCRIPTION :
 --   Verifies the solutions at the end of the homotopy.
 --
 -- IN :
 --   polys : matrix of polynomials;
---   solutions : solutions that should be zeroes of polys.
+--   startSolutions : solutions that should vanish as polys.
 --
-   scan(solutions, p->if not (
+   scan(targetSolutions, p->assert (
       s := matrix p;
       norm sub(polys,matrix{{1_FFF}}| s)
       < ERROR'TOLERANCE * max{1,norm s}
       * norm sub(last coefficients polys,FFF)
-      ) then error "a target solution appears to be wrong"
+      ) -- end assert
    ) -- end scan 
+);
+
+verifyStart = method();
+verifyStart(Matrix,List) := (polys, startSolutions) -> (
+--
+-- DESCRIPTION :
+--   Verifies the solutions at the start of the homotopy.
+--
+-- IN :
+--   polys : matrix of polynomials;
+--   startSolutions : solutions that should vanish as polys.
+--
+   scan(startSolutions, s->assert (
+      norm sub(polys,matrix{{0_FFF}|s})
+      < ERROR'TOLERANCE * max{1,norm matrix{s}}
+      * norm sub(last coefficients polys,FFF)
+      ) -- end assert
+   ) -- end scan startSolutions
 );
 
 globalStayCoords = method();
@@ -249,7 +269,7 @@ caseSwapStay(MutableHashTable,List,Matrix,Sequence) := (node,
    );
    polys := squareUpPolynomials(numgens ring all'polys-1, all'polys);
    -- check at t=0
-   if VERIFY'SOLUTIONS then verifySolutions(polys, startSolutions);
+   if VERIFY'SOLUTIONS then verifyStart(polys, startSolutions);
    -- track homotopy and plug in the solution together with t=1 into Xt
    (ti,targetSolutions) := toSequence elapsedTiming trackHomotopyNSC(polys,startSolutions);
    statsIncrementTrackingTime ti; 
